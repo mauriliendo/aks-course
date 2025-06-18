@@ -34,40 +34,32 @@ stages:
     steps:
     
     - task: Bash@3
-      displayName: install checkov
-      enabled: ${{ parameters.runCompletePipeline}}
-      inputs:
-        targetType: 'inline'
-        script: |
-          ls $(pwd)/app/dockerfile/java
-          #docker run --tty --volume $(pwd)/app/dockerfile/java:/dfile bridgecrew/checkov --directory /dfile
-          # docker run --tty --volume /app/dockerfile/java:/dfile bridgecrew/checkov --directory /dfile
-          sudo apt update
-          sudo apt install software-properties-common
-          sudo add-apt-repository ppa:deadsnakes/ppa
-          sudo apt install python3.7
-          sudo apt install python3-pip
-          sudo python3.7 -m pip install -U checkov
-        workingDirectory: '$(System.DefaultWorkingDirectory)'
-
-    - task: Bash@3
-      displayName: Scan Dockerfile
-      enabled: ${{ parameters.runCompletePipeline}}
+      displayName: Run Checkov on Dockerfile
       continueOnError: true
       inputs:
         targetType: 'inline'
         script: |
-          checkov --directory app-dotnet
+          echo "Buscando Dockerfile..."
+          DOCKERFILE_PATH=$(find $(System.DefaultWorkingDirectory) -name Dockerfile | head -n 1)
+          DOCKERFILE_DIR=$(dirname "$DOCKERFILE_PATH")
+          echo "Dockerfile encontrado en: $DOCKERFILE_PATH"
+
+          echo "Ejecutando Checkov con Docker..."
+          docker run --rm -v "$DOCKERFILE_DIR:/dfile" bridgecrew/checkov --directory /dfile
         workingDirectory: '$(System.DefaultWorkingDirectory)'
 
     - task: Bash@3
       displayName: Scan YAML Manifest
-      enabled: ${{ parameters.runCompletePipeline}}
       continueOnError: true
       inputs:
         targetType: 'inline'
         script: |
-          checkov --directory 02_kubernetes_aks
+          echo "Buscando deployment.yaml..."
+          YAML_PATH=$(find $(System.DefaultWorkingDirectory) -path "*/deploy/kubernetes/*" | head -n 1)
+          YAML_DIR=$(dirname "$YAML_PATH")
+          echo "Manifiesto encontrado en: $YAML_PATH"
+
+          docker run --rm -v "$YAML_DIR:/yamls" bridgecrew/checkov --directory /yamls
         workingDirectory: '$(System.DefaultWorkingDirectory)'
 
     - task: Bash@3
